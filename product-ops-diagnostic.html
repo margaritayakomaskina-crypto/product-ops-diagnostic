@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Product Ops Diagnostic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F4EF; --panel:#FFFFFF; --ink:#14161B; --ink-soft:#5A5E66; --line:#E7E4DA;
+  --rust:#FF5630; --teal:#00B39F; --violet:#8B7CF6; --rust-tint:#FFE9E1; --teal-tint:#DFF7F2;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101214; --panel:#1B1E22; --ink:#F1EFE9; --ink-soft:#9CA0A6; --line:#2B2F34;
+    --rust:#FF7A57; --teal:#31CDB5; --violet:#A79BFF; --rust-tint:#2B1912; --teal-tint:#0F2620;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101214; --panel:#1B1E22; --ink:#F1EFE9; --ink-soft:#9CA0A6; --line:#2B2F34;
+  --rust:#FF7A57; --teal:#31CDB5; --violet:#A79BFF; --rust-tint:#2B1912; --teal-tint:#0F2620;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Onest',system-ui,Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+.font-m{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;}
+.rail{position:sticky;top:0;height:3px;background:var(--line);z-index:5;}
+.rail-fill{height:100%;background:var(--ink);width:0%;transition:width .4s ease;}
+.wrap{max-width:640px;margin:0 auto;padding:56px 24px 100px;}
+.brand{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:64px;gap:16px;}
+.brand-mark{font-family:'Onest';font-weight:700;font-size:15px;letter-spacing:-.01em;}
+.lang-toggle{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+.lang-btn{font-family:"JetBrains Mono";font-size:11.5px;border:none;background:none;color:var(--ink-soft);
+  padding:6px 12px;border-radius:16px;cursor:pointer;}
+.lang-btn.active{background:var(--ink);color:var(--bg);}
+.screen{display:none;}
+.screen.active{display:block;animation:rise .5s ease both;}
+@keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+h1{font-family:'Onest';font-weight:800;font-size:35px;line-height:1.2;margin:0 0 20px;letter-spacing:-.02em;}
+.lede{font-size:17px;color:var(--ink-soft);max-width:52ch;margin:0 0 36px;}
+.btn{font-family:'Onest';font-weight:700;font-size:15px;border:none;border-radius:11px;
+  padding:15px 28px;cursor:pointer;background:var(--ink);color:var(--bg);transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease;display:inline-block;box-shadow:0 2px 10px rgba(0,0,0,.12);}
+.btn:hover{opacity:.9;box-shadow:0 4px 16px rgba(0,0,0,.16);}
+.btn:active{transform:scale(.98);}
+.btn-outline{background:transparent;color:var(--ink);border:1px solid var(--line);box-shadow:none;}
+.meta-row{display:flex;gap:22px;margin-top:34px;font-size:13px;color:var(--ink-soft);flex-wrap:wrap;}
+.meta-row span{display:flex;align-items:center;gap:7px;}
+.meta-row b{color:var(--ink);font-weight:700;}
+.zones{display:flex;gap:10px;margin-top:48px;border-top:1px solid var(--line);padding-top:22px;flex-wrap:wrap;}
+.zone-chip{font-family:"JetBrains Mono";font-size:11.5px;color:var(--ink-soft);padding:6px 12px;background:var(--panel);border:1px solid var(--line);border-radius:20px;}
+
+.qmeta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
+.qmeta .qn{font-family:"JetBrains Mono";font-size:13px;color:var(--ink-soft);}
+.qmeta .qz{font-family:"JetBrains Mono";font-size:12px;color:var(--rust);background:var(--rust-tint);padding:4px 11px;border-radius:20px;}
+.qtext{font-family:'Onest';font-size:24px;font-weight:700;line-height:1.35;margin:0 0 30px;max-width:34ch;letter-spacing:-.01em;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px;
+  font-family:'Onest';font-size:15px;color:var(--ink);cursor:pointer;display:flex;gap:14px;align-items:center;
+  transition:border-color .15s ease,box-shadow .15s ease,transform .1s ease;width:100%;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.opt:hover{border-color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);}
+.opt .k{font-family:"JetBrains Mono";font-size:11px;color:var(--ink-soft);flex-shrink:0;width:24px;height:24px;
+  border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.opt:hover .k{border-color:var(--ink);color:var(--ink);}
+
+.headline{font-family:"JetBrains Mono";font-size:12px;color:var(--ink-soft);margin-bottom:10px;}
+.res-title{font-family:'Onest';font-size:30px;font-weight:800;line-height:1.25;margin:0 0 16px;max-width:26ch;letter-spacing:-.01em;}
+.res-body{color:var(--ink-soft);font-size:16px;max-width:54ch;margin-bottom:8px;}
+.meters{margin:40px 0 42px;display:flex;flex-direction:column;gap:18px;}
+.meter-row{display:grid;grid-template-columns:150px 1fr 46px;align-items:center;gap:14px;}
+.meter-label{font-size:13.5px;color:var(--ink-soft);}
+.meter-track{height:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.meter-fill{height:100%;border-radius:10px;width:0%;transition:width .8s cubic-bezier(.2,.8,.3,1);}
+.meter-pct{font-family:"JetBrains Mono";font-size:13px;text-align:right;color:var(--ink);}
+.friction-panel{background:var(--rust-tint);border-radius:14px;padding:22px 24px;margin:8px 0 40px;}
+.friction-panel.ok{background:var(--teal-tint);}
+.friction-label{font-family:"JetBrains Mono";font-size:11.5px;color:var(--rust);margin-bottom:6px;}
+.friction-panel.ok .friction-label{color:var(--teal);}
+.friction-title{font-family:'Onest';font-weight:700;font-size:18px;margin-bottom:6px;}
+.take-list{list-style:none;padding:0;margin:0 0 44px;display:flex;flex-direction:column;gap:0;}
+.take-list li{padding:16px 0;border-bottom:1px solid var(--line);font-size:15px;display:flex;gap:14px;}
+.take-list li:first-child{border-top:1px solid var(--line);}
+.take-list .tk{font-family:"JetBrains Mono";font-size:12px;color:var(--ink-soft);flex-shrink:0;padding-top:2px;}
+.cta-panel{background:var(--ink);color:var(--bg);border-radius:18px;padding:32px 28px;}
+.cta-panel h3{font-family:'Onest';font-size:20px;font-weight:700;margin:0 0 10px;letter-spacing:-.01em;}
+.cta-panel p{color:color-mix(in srgb, var(--bg) 70%, transparent);opacity:.75;font-size:14.5px;margin:0 0 22px;max-width:48ch;}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;}
+.cta-panel .btn{background:var(--bg);color:var(--ink);}
+.cta-panel .btn-outline{background:transparent;color:var(--bg);border:1px solid rgba(255,255,255,.25);}
+@media(max-width:480px){
+  h1{font-size:28px;} .qtext{font-size:21px;} .res-title{font-size:25px;}
+  .meter-row{grid-template-columns:104px 1fr 40px;gap:10px;}
+  .wrap{padding:36px 18px 80px;}
+}
+</style>
+</head>
+<body>
+
+<div class="rail"><div class="rail-fill" id="railFill"></div></div>
+
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark" id="brandMark">Product Ops Diagnostic</div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btnRu" onclick="setLang('ru')">RU</button>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <section class="screen active" id="screen-intro">
+    <h1 id="heroTitle"></h1>
+    <p class="lede" id="heroLede"></p>
+    <button class="btn" id="startBtn" onclick="startQuiz()"></button>
+    <div class="meta-row">
+      <span><b>7</b> <span id="metaQ"></span></span>
+      <span><b>~3</b> <span id="metaMin"></span></span>
+      <span><b>4</b> <span id="metaZones"></span></span>
+    </div>
+    <div class="zones" id="zoneChips"></div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="screen" id="screen-quiz">
+    <div class="qmeta">
+      <span class="qn" id="qCount"></span>
+      <span class="qz" id="qZone"></span>
+    </div>
+    <h2 class="qtext" id="qText"></h2>
+    <div class="opts" id="qOpts"></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="screen" id="screen-results">
+    <div class="headline" id="resHeadline"></div>
+    <h2 class="res-title" id="resTitle"></h2>
+    <p class="res-body" id="resBody"></p>
+
+    <div class="meters" id="meters"></div>
+
+    <div class="friction-panel" id="frictionPanel">
+      <div class="friction-label" id="frictionLabel"></div>
+      <div class="friction-title" id="frictionTitle"></div>
+      <p class="res-body" id="frictionBody" style="margin-bottom:0;"></p>
+    </div>
+
+    <div id="takeSection">
+      <div class="headline" id="takeHeadline"></div>
+      <ul class="take-list" id="takeList"></ul>
+    </div>
+
+    <div class="cta-panel" id="ctaPanel">
+      <h3 id="ctaTitle"></h3>
+      <p id="ctaBody"></p>
+      <div class="cta-row">
+        <a class="btn" id="ctaConnect" href="https://www.linkedin.com/in/ritaya/" target="_blank" rel="noopener"></a>
+        <button class="btn btn-outline" id="ctaRestart" onclick="restart()"></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const ZONE_KEYS = ['systems','communication','data','capacity'];
+const ZONE_COLOR = {systems:'var(--ink)', communication:'var(--teal)', data:'var(--rust)', capacity:'var(--violet)'};
+
+const QUESTIONS = [
+  {zone:'communication', opts:[3,2,1,0]},
+  {zone:'data',          opts:[3,2,1,0]},
+  {zone:'communication', opts:[3,2,1,0]},
+  {zone:'data',          opts:[3,2,1,0]},
+  {zone:'systems',       opts:[3,2,1,0]},
+  {zone:'systems',       opts:[3,2,1,0]},
+  {zone:'capacity',      opts:[3,2,1,0]}
+];
+
+const I18N = {
+en: {
+  brandMark:'Product Ops Diagnostic',
+  heroTitle:'Is your product team spending too much time running the product \u2014 instead of improving it?',
+  heroLede:'Seven questions about how work actually moves through your team. No log-in, no email required to see your result.',
+  startBtn:'Start diagnostic',
+  metaQ:'questions', metaMin:'min', metaZones:'operating zones scored',
+  zoneChips:['Systems & process','Communication','Data & insight','Team capacity'],
+  zoneNames:{systems:'Systems & process', communication:'Communication', data:'Data & insight', capacity:'Team capacity'},
+  qOf:(i,n)=>`Q${i} / ${n}`,
+  questions:[
+    {text:'Your PM needs an update from Engineering. What actually happens?',
+      opts:['They check the agreed system.','They ask in Slack.','They schedule a meeting.','They ask several people and reconcile conflicting answers.']},
+    {text:'A customer reports an important problem. What happens next?',
+      opts:['It enters a defined feedback loop.','Someone forwards it to the PM.','The PM manually collects similar cases.','It depends on who happens to see the message.']},
+    {text:'How does your team communicate product changes?',
+      opts:['Defined audience, channel and cadence.','Mostly Slack or email.','Different teams do it differently.','PMs personally make sure everyone knows.']},
+    {text:'How much PM time goes into reporting?',
+      opts:['Mostly automated.','Some manual preparation.','A significant amount.','PMs spend a lot of time collecting and cleaning data.']},
+    {text:'How many product processes are actually documented?',
+      opts:['Most critical ones.','Some.','A few.','Mostly tribal knowledge.']},
+    {text:'What happens when the team grows?',
+      opts:['Existing processes scale reasonably well.','We adjust them as problems appear.','New people often ask how things work.','Everyone develops their own way of doing things.']},
+    {text:'A PM spends half a day preparing one stakeholder update. How often does that happen?',
+      opts:['Almost never.','Sometimes.','Regularly.','It\u2019s just part of the job.']}
+  ],
+  resHeadline:'Your product operations profile',
+  resBodyTpl:(o)=>`Overall: ${o}% \u2014 based on how your team handles hand-offs, feedback, reporting and process today.`,
+  frictionLabel:'Biggest friction',
+  takeHeadline:'What Product Ops could take off your PMs\u2019 plate',
+  ctaTitle:'Want to see where your team is leaking time?',
+  ctaBody:'I help small product and startup teams turn this kind of friction into repeatable systems \u2014 process, reporting, and the AI workflows that remove the manual layer underneath. Happy to walk through your result.',
+  ctaConnect:'Connect on LinkedIn',
+  ctaRestart:'Retake diagnostic',
+  results:{
+    ok:{label:'No immediate gap', title:'Your systems look reasonably clear.',
+      body:'Ownership and process seem to be holding, even under normal pressure. Don\u2019t add an operations hire just because other teams are doing it \u2014 revisit this if headcount or scope changes fast.'},
+    systems:{label:'Biggest friction \u2014 systems & process', title:'Operational friction',
+      body:'Your team is functioning, but work depends on people remembering things rather than on a system. That\u2019s invisible until someone leaves or the team doubles.'},
+    communication:{label:'Biggest friction \u2014 communication', title:'Coordination overload',
+      body:'Your PMs are becoming the connective tissue between product, engineering, sales and support \u2014 manually, every time. That doesn\u2019t scale past a handful of stakeholders.'},
+    data:{label:'Biggest friction \u2014 data & insight', title:'Information overload',
+      body:'Your team has plenty of information and too little time to turn it into a decision. Reporting and feedback synthesis are quietly eating the week.'},
+    capacity:{label:'Biggest friction \u2014 team capacity', title:'PMs are absorbing operational work',
+      body:'A meaningful share of PM time is going into work that isn\u2019t product strategy \u2014 chasing updates, prepping reports, coordinating people. That\u2019s the work an operating layer is built for.'},
+    all:{label:'All four zones are flashing', title:'You may have built a Product Ops job inside your PM team',
+      body:'Systems, communication, data and capacity are all under strain at once. That\u2019s not a hiring-more-PMs problem \u2014 it\u2019s a missing operating layer.'}
+  },
+  take:{
+    systems:['Turn recurring exceptions into one documented, owned process','Define what "done" and "owned" mean for the workflows people ask about most'],
+    communication:['Set one audience, channel and cadence per type of update','Build the cross-functional handoffs so PMs stop being the messenger'],
+    data:['Build one intake for customer feedback instead of five ad-hoc ones','Automate the reporting PMs currently assemble by hand'],
+    capacity:['Move the manual reporting off the PM\u2019s calendar entirely','Give PMs a decision-ready weekly summary instead of raw inputs'],
+    default:['Diagnose where the operational drag is actually coming from','Simplify: remove steps, meetings and manual work that don\u2019t need a human','Systematize what\u2019s left into repeatable, owned processes','Automate the recurring reporting and coordination underneath it']
+  }
+},
+ru: {
+  brandMark:'Product Ops \u0414\u0438\u0430\u0433\u043d\u043e\u0441\u0442\u0438\u043a\u0430',
+  heroTitle:'\u0412\u0430\u0448\u0430 \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u0442\u0440\u0430\u0442\u0438\u0442 \u0432\u0440\u0435\u043c\u044f \u043d\u0430 \u0442\u043e, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0434\u0443\u043a\u0442 \u043f\u0440\u043e\u0441\u0442\u043e \u0434\u0435\u0440\u0436\u0430\u043b\u0441\u044f \u043d\u0430 \u043f\u043b\u0430\u0432\u0443 \u2014 \u0432\u043c\u0435\u0441\u0442\u043e \u0442\u043e\u0433\u043e, \u0447\u0442\u043e\u0431\u044b \u0435\u0433\u043e \u0440\u0430\u0437\u0432\u0438\u0432\u0430\u0442\u044c?',
+  heroLede:'\u0421\u0435\u043c\u044c \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432 \u043e \u0442\u043e\u043c, \u043a\u0430\u043a \u0443 \u0432\u0430\u0441 \u043d\u0430 \u0441\u0430\u043c\u043e\u043c \u0434\u0435\u043b\u0435 \u0434\u0432\u0438\u0436\u0435\u0442\u0441\u044f \u0440\u0430\u0431\u043e\u0442\u0430. \u0411\u0435\u0437 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438 \u0438 \u043f\u043e\u0447\u0442\u044b \u2014 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0441\u0440\u0430\u0437\u0443 \u043d\u0430 \u044d\u043a\u0440\u0430\u043d\u0435.',
+  startBtn:'\u041d\u0430\u0447\u0430\u0442\u044c \u0434\u0438\u0430\u0433\u043d\u043e\u0441\u0442\u0438\u043a\u0443',
+  metaQ:'\u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432', metaMin:'\u043c\u0438\u043d', metaZones:'\u0437\u043e\u043d\u044b \u0432 \u043e\u0446\u0435\u043d\u043a\u0435',
+  zoneChips:['\u0421\u0438\u0441\u0442\u0435\u043c\u044b \u0438 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b','\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f','\u0414\u0430\u043d\u043d\u044b\u0435 \u0438 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430','\u0420\u0435\u0441\u0443\u0440\u0441 \u043a\u043e\u043c\u0430\u043d\u0434\u044b'],
+  zoneNames:{systems:'\u0421\u0438\u0441\u0442\u0435\u043c\u044b \u0438 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b', communication:'\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f', data:'\u0414\u0430\u043d\u043d\u044b\u0435 \u0438 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430', capacity:'\u0420\u0435\u0441\u0443\u0440\u0441 \u043a\u043e\u043c\u0430\u043d\u0434\u044b'},
+  qOf:(i,n)=>`\u0412\u043e\u043f\u0440\u043e\u0441 ${i} \u0438\u0437 ${n}`,
+  questions:[
+    {text:'\u041f\u0440\u043e\u0434\u0430\u043a\u0442\u0443 \u043d\u0443\u0436\u0435\u043d \u0441\u0442\u0430\u0442\u0443\u0441 \u043f\u043e \u0437\u0430\u0434\u0430\u0447\u0435 \u043e\u0442 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438. \u041a\u0430\u043a \u044d\u0442\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0434\u0438\u0442 \u043d\u0430 \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u0435?',
+      opts:['\u0421\u043c\u043e\u0442\u0440\u0438\u0442 \u0432 \u043e\u0431\u0449\u0435\u0439 \u0434\u043e\u0441\u043a\u0435 \u0437\u0430\u0434\u0430\u0447 \u2014 \u0441\u0442\u0430\u0442\u0443\u0441 \u0443\u0436\u0435 \u0442\u0430\u043c.','\u0421\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442 \u0432 Slack.','\u0414\u043e\u0433\u043e\u0432\u0430\u0440\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u043e \u0437\u0432\u043e\u043d\u043a\u0435, \u0447\u0442\u043e\u0431\u044b \u043e\u0431\u0441\u0443\u0434\u0438\u0442\u044c.','\u0421\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442 \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u0438\u0445 \u043b\u044e\u0434\u0435\u0439 \u0438 \u0441\u0432\u0435\u0440\u044f\u0435\u0442, \u0443 \u043a\u043e\u0433\u043e \u043a\u0430\u043a\u0430\u044f \u0432\u0435\u0440\u0441\u0438\u044f.']},
+    {text:'\u041a\u043b\u0438\u0435\u043d\u0442 \u0441\u043e\u043e\u0431\u0449\u0430\u0435\u0442 \u043e \u0441\u0435\u0440\u044c\u0451\u0437\u043d\u043e\u0439 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0435. \u0427\u0442\u043e \u0434\u0430\u043b\u044c\u0448\u0435?',
+      opts:['\u0415\u0441\u0442\u044c \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e\u0435 \u043c\u0435\u0441\u0442\u043e, \u043a\u0443\u0434\u0430 \u0441\u0442\u0435\u043a\u0430\u0435\u0442\u0441\u044f \u0442\u0430\u043a\u043e\u0439 \u0444\u0438\u0434\u0431\u0435\u043a, \u2014 \u043e\u0431\u0440\u0430\u0449\u0435\u043d\u0438\u0435 \u043f\u043e\u043f\u0430\u0434\u0430\u0435\u0442 \u0442\u0443\u0434\u0430.','\u041a\u0442\u043e-\u0442\u043e \u043f\u0435\u0440\u0435\u0441\u044b\u043b\u0430\u0435\u0442 \u044d\u0442\u043e \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u0443.','\u041f\u0440\u043e\u0434\u0430\u043a\u0442 \u0432\u0440\u0443\u0447\u043d\u0443\u044e \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u0442 \u043f\u043e\u0445\u043e\u0436\u0438\u0435 \u0441\u043b\u0443\u0447\u0430\u0438, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u043d\u044f\u0442\u044c \u043c\u0430\u0441\u0448\u0442\u0430\u0431.','\u0417\u0430\u0432\u0438\u0441\u0438\u0442 \u043e\u0442 \u0442\u043e\u0433\u043e, \u043a\u0442\u043e \u0432\u043e\u043e\u0431\u0449\u0435 \u044d\u0442\u043e \u0443\u0432\u0438\u0434\u0438\u0442.']},
+    {text:'\u041a\u0430\u043a \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u0441\u043e\u043e\u0431\u0449\u0430\u0435\u0442 \u043e\u0431 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f\u0445 \u0432 \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u0435?',
+      opts:['\u0415\u0441\u0442\u044c \u0447\u0451\u0442\u043a\u0430\u044f \u0430\u0443\u0434\u0438\u0442\u043e\u0440\u0438\u044f, \u043a\u0430\u043d\u0430\u043b \u0438 \u043f\u0435\u0440\u0438\u043e\u0434\u0438\u0447\u043d\u043e\u0441\u0442\u044c.','\u0412 \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u043c \u0447\u0435\u0440\u0435\u0437 Slack \u0438\u043b\u0438 \u043f\u043e\u0447\u0442\u0443.','\u0420\u0430\u0437\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b \u0434\u0435\u043b\u0430\u044e\u0442 \u044d\u0442\u043e \u043f\u043e-\u0441\u0432\u043e\u0435\u043c\u0443.','\u041f\u0440\u043e\u0434\u0430\u043a\u0442 \u043b\u0438\u0447\u043d\u043e \u0441\u043b\u0435\u0434\u0438\u0442, \u0447\u0442\u043e\u0431\u044b \u0432\u0441\u0435 \u0443\u0437\u043d\u0430\u043b\u0438.']},
+    {text:'\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u0430 \u0443\u0445\u043e\u0434\u0438\u0442 \u043d\u0430 \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c?',
+      opts:['\u041f\u043e\u0447\u0442\u0438 \u0432\u0441\u0451 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u043d\u043e.','\u0415\u0441\u0442\u044c \u043d\u0435\u043c\u043d\u043e\u0433\u043e \u0440\u0443\u0447\u043d\u043e\u0439 \u0440\u0430\u0431\u043e\u0442\u044b.','\u0417\u0430\u043c\u0435\u0442\u043d\u0430\u044f \u0447\u0430\u0441\u0442\u044c \u0432\u0440\u0435\u043c\u0435\u043d\u0438.','\u041f\u0440\u043e\u0434\u0430\u043a\u0442 \u0442\u0440\u0430\u0442\u0438\u0442 \u043c\u043d\u043e\u0433\u043e \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u043d\u0430 \u0441\u0431\u043e\u0440 \u0438 \u0447\u0438\u0441\u0442\u043a\u0443 \u0434\u0430\u043d\u043d\u044b\u0445.']},
+    {text:'\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432\u044b\u0445 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u043e\u0432 \u0440\u0435\u0430\u043b\u044c\u043d\u043e \u0437\u0430\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u043e?',
+      opts:['\u0411\u043e\u043b\u044c\u0448\u0438\u043d\u0441\u0442\u0432\u043e \u043a\u043b\u044e\u0447\u0435\u0432\u044b\u0445.','\u041d\u0435\u043a\u043e\u0442\u043e\u0440\u044b\u0435.','\u0415\u0434\u0438\u043d\u0438\u0446\u044b.','\u0412 \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u043c \u0432\u0441\u0451 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044f \u0432 \u0433\u043e\u043b\u043e\u0432\u0430\u0445.']},
+    {text:'\u0427\u0442\u043e \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0434\u0438\u0442, \u043a\u043e\u0433\u0434\u0430 \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u0440\u0430\u0441\u0442\u0451\u0442?',
+      opts:['\u0421\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b \u0431\u043e\u043b\u0435\u0435-\u043c\u0435\u043d\u0435\u0435 \u0432\u044b\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u044e\u0442 \u0440\u043e\u0441\u0442.','\u0414\u043e\u043d\u0430\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u0435\u043c \u0438\u0445 \u043f\u043e \u043c\u0435\u0440\u0435 \u043f\u043e\u044f\u0432\u043b\u0435\u043d\u0438\u044f \u043f\u0440\u043e\u0431\u043b\u0435\u043c.','\u041d\u043e\u0432\u044b\u0435 \u043b\u044e\u0434\u0438 \u0447\u0430\u0441\u0442\u043e \u0441\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u044e\u0442, \u043a\u0430\u043a \u0447\u0442\u043e \u0443\u0441\u0442\u0440\u043e\u0435\u043d\u043e.','\u041a\u0430\u0436\u0434\u044b\u0439 \u0434\u0435\u043b\u0430\u0435\u0442 \u043f\u043e-\u0441\u0432\u043e\u0435\u043c\u0443.']},
+    {text:'\u041f\u0440\u043e\u0434\u0430\u043a\u0442 \u0442\u0440\u0430\u0442\u0438\u0442 \u043f\u043e\u043b\u0434\u043d\u044f \u043d\u0430 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0443 \u043e\u0434\u043d\u043e\u0433\u043e \u0441\u0442\u0430\u0442\u0443\u0441\u0430 \u0434\u043b\u044f \u0441\u0442\u0435\u0439\u043a\u0445\u043e\u043b\u0434\u0435\u0440\u043e\u0432. \u041a\u0430\u043a \u0447\u0430\u0441\u0442\u043e \u0442\u0430\u043a \u0431\u044b\u0432\u0430\u0435\u0442?',
+      opts:['\u041f\u043e\u0447\u0442\u0438 \u043d\u0438\u043a\u043e\u0433\u0434\u0430.','\u0418\u043d\u043e\u0433\u0434\u0430 \u0431\u044b\u0432\u0430\u0435\u0442.','\u0411\u044b\u0432\u0430\u0435\u0442 \u0440\u0435\u0433\u0443\u043b\u044f\u0440\u043d\u043e.','\u042d\u0442\u043e \u043f\u0440\u043e\u0441\u0442\u043e \u0447\u0430\u0441\u0442\u044c \u0440\u0430\u0431\u043e\u0442\u044b.']}
+  ],
+  resHeadline:'\u0412\u0430\u0448 \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432\u044b\u0445 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439',
+  resBodyTpl:(o)=>`\u0418\u0442\u043e\u0433: ${o}% \u2014 \u0438\u0441\u0445\u043e\u0434\u044f \u0438\u0437 \u0442\u043e\u0433\u043e, \u043a\u0430\u043a \u0432 \u043a\u043e\u043c\u0430\u043d\u0434\u0435 \u0441\u0435\u0433\u043e\u0434\u043d\u044f \u0443\u0441\u0442\u0440\u043e\u0435\u043d\u044b \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0430 \u0434\u0435\u043b, \u043e\u0431\u0440\u0430\u0442\u043d\u0430\u044f \u0441\u0432\u044f\u0437\u044c, \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c \u0438 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b.`,
+  frictionLabel:'\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u0442\u043e\u0447\u043a\u0430 \u0442\u0440\u0435\u043d\u0438\u044f',
+  takeHeadline:'\u0427\u0442\u043e Product Ops \u043c\u043e\u0436\u0435\u0442 \u0441\u043d\u044f\u0442\u044c \u0441 \u0432\u0430\u0448\u0438\u0445 \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u043e\u0432',
+  ctaTitle:'\u0425\u043e\u0442\u0438\u0442\u0435 \u0440\u0430\u0437\u043e\u0431\u0440\u0430\u0442\u044c\u0441\u044f, \u0433\u0434\u0435 \u0438\u043c\u0435\u043d\u043d\u043e \u0443\u0442\u0435\u043a\u0430\u0435\u0442 \u0432\u0440\u0435\u043c\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u044b?',
+  ctaBody:'\u042f \u043f\u043e\u043c\u043e\u0433\u0430\u044e \u043d\u0435\u0431\u043e\u043b\u044c\u0448\u0438\u043c \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432\u044b\u043c \u0438 \u0441\u0442\u0430\u0440\u0442\u0430\u043f-\u043a\u043e\u043c\u0430\u043d\u0434\u0430\u043c \u043f\u0440\u0435\u0432\u0440\u0430\u0449\u0430\u0442\u044c \u0442\u0430\u043a\u043e\u0435 \u0442\u0440\u0435\u043d\u0438\u0435 \u0432 \u043f\u043e\u043d\u044f\u0442\u043d\u044b\u0435 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b, \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c \u0438 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044e \u0440\u0443\u0442\u0438\u043d\u044b. \u041c\u043e\u0433\u0443 \u0440\u0430\u0437\u043e\u0431\u0440\u0430\u0442\u044c \u0432\u0430\u0448 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u043f\u043e\u0434\u0440\u043e\u0431\u043d\u0435\u0435.',
+  ctaConnect:'\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432 LinkedIn',
+  ctaRestart:'\u041f\u0440\u043e\u0439\u0442\u0438 \u0437\u0430\u043d\u043e\u0432\u043e',
+  results:{
+    ok:{label:'\u0421\u0440\u043e\u0447\u043d\u044b\u0445 \u043f\u0440\u043e\u0431\u0435\u043b\u043e\u0432 \u043d\u0435\u0442', title:'\u0412\u0430\u0448\u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u0432\u044b\u0433\u043b\u044f\u0434\u044f\u0442 \u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e \u043f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e.',
+      body:'\u041e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0441\u0442\u044c \u0438 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b \u0434\u0435\u0440\u0436\u0430\u0442\u0441\u044f \u0434\u0430\u0436\u0435 \u043f\u043e\u0434 \u043e\u0431\u044b\u0447\u043d\u043e\u0439 \u043d\u0430\u0433\u0440\u0443\u0437\u043a\u043e\u0439. \u041d\u0435 \u0431\u0435\u0440\u0438\u0442\u0435 Ops-\u0440\u043e\u043b\u044c \u043f\u0440\u043e\u0441\u0442\u043e \u043f\u043e\u0442\u043e\u043c\u0443, \u0447\u0442\u043e \u0442\u0430\u043a \u0434\u0435\u043b\u0430\u044e\u0442 \u0434\u0440\u0443\u0433\u0438\u0435 \u2014 \u0432\u0435\u0440\u043d\u0438\u0442\u0435\u0441\u044c \u043a \u044d\u0442\u043e\u043c\u0443, \u0435\u0441\u043b\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u0438\u043b\u0438 \u043c\u0430\u0441\u0448\u0442\u0430\u0431 \u0431\u044b\u0441\u0442\u0440\u043e \u0432\u044b\u0440\u0430\u0441\u0442\u0443\u0442.'},
+    systems:{label:'\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u044f \u2014 \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u0438 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b', title:'\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u043e\u043d\u043d\u043e\u0435 \u0442\u0440\u0435\u043d\u0438\u0435',
+      body:'\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442, \u043d\u043e \u0432\u0441\u0451 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044f \u043d\u0430 \u0442\u043e\u043c, \u0447\u0442\u043e \u043b\u044e\u0434\u0438 \u043f\u043e\u043c\u043d\u044f\u0442, \u0430 \u043d\u0435 \u043d\u0430 \u0441\u0438\u0441\u0442\u0435\u043c\u0435. \u042d\u0442\u043e \u043d\u0435\u0437\u0430\u043c\u0435\u0442\u043d\u043e, \u043f\u043e\u043a\u0430 \u043a\u0442\u043e-\u0442\u043e \u043d\u0435 \u0443\u0432\u043e\u043b\u0438\u0442\u0441\u044f \u0438\u043b\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u043d\u0435 \u0432\u044b\u0440\u0430\u0441\u0442\u0435\u0442 \u0432\u0434\u0432\u043e\u0435.'},
+    communication:{label:'\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u044f \u2014 \u043a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f', title:'\u041f\u0435\u0440\u0435\u0433\u0440\u0443\u0437 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0446\u0438\u0435\u0439',
+      body:'\u041f\u0440\u043e\u0434\u0430\u043a\u0442\u044b \u0441\u0442\u0430\u043d\u043e\u0432\u044f\u0442\u0441\u044f \u0441\u0432\u044f\u0437\u0443\u044e\u0449\u0438\u043c \u0437\u0432\u0435\u043d\u043e\u043c \u043c\u0435\u0436\u0434\u0443 \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u043c, \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u043e\u0439, \u043f\u0440\u043e\u0434\u0430\u0436\u0430\u043c\u0438 \u0438 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u043e\u0439 \u2014 \u0432\u0440\u0443\u0447\u043d\u0443\u044e, \u043a\u0430\u0436\u0434\u044b\u0439 \u0440\u0430\u0437. \u041d\u0430 \u043d\u0435\u0431\u043e\u043b\u044c\u0448\u043e\u043c \u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u0435 \u0441\u0442\u0435\u0439\u043a\u0445\u043e\u043b\u0434\u0435\u0440\u043e\u0432 \u044d\u0442\u043e \u0435\u0449\u0451 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442, \u0434\u0430\u043b\u044c\u0448\u0435 \u2014 \u043d\u0435\u0442.'},
+    data:{label:'\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u044f \u2014 \u0434\u0430\u043d\u043d\u044b\u0435 \u0438 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430', title:'\u041f\u0435\u0440\u0435\u0433\u0440\u0443\u0437 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u0435\u0439',
+      body:'\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u0438 \u043c\u043d\u043e\u0433\u043e, \u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u043f\u0440\u0435\u0432\u0440\u0430\u0442\u0438\u0442\u044c \u0435\u0451 \u0432 \u0440\u0435\u0448\u0435\u043d\u0438\u0435 \u2014 \u043d\u0435\u0442. \u041e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c \u0438 \u0441\u0431\u043e\u0440 \u0444\u0438\u0434\u0431\u0435\u043a\u0430 \u0442\u0438\u0445\u043e \u0441\u044a\u0435\u0434\u0430\u044e\u0442 \u043d\u0435\u0434\u0435\u043b\u044e.'},
+    capacity:{label:'\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u0442\u0440\u0435\u043d\u0438\u044f \u2014 \u0440\u0435\u0441\u0443\u0440\u0441 \u043a\u043e\u043c\u0430\u043d\u0434\u044b', title:'\u041f\u0440\u043e\u0434\u0430\u043a\u0442\u044b \u0431\u0435\u0440\u0443\u0442 \u043d\u0430 \u0441\u0435\u0431\u044f \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u043e\u043d\u043a\u0443',
+      body:'\u0417\u0430\u043c\u0435\u0442\u043d\u0430\u044f \u0447\u0430\u0441\u0442\u044c \u0432\u0440\u0435\u043c\u0435\u043d\u0438 \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u0430 \u0443\u0445\u043e\u0434\u0438\u0442 \u043d\u0435 \u043d\u0430 \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432\u0443\u044e \u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438\u044e, \u0430 \u043d\u0430 \u0441\u0431\u043e\u0440 \u0441\u0442\u0430\u0442\u0443\u0441\u043e\u0432, \u043e\u0442\u0447\u0451\u0442\u044b \u0438 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0446\u0438\u044e. \u0418\u043c\u0435\u043d\u043d\u043e \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u043d\u0443\u0436\u0435\u043d \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u043e\u043d\u043d\u044b\u0439 \u0441\u043b\u043e\u0439.'},
+    all:{label:'\u0421\u0432\u0435\u0442\u044f\u0442\u0441\u044f \u0432\u0441\u0435 \u0447\u0435\u0442\u044b\u0440\u0435 \u0437\u043e\u043d\u044b', title:'\u0412\u043e\u0437\u043c\u043e\u0436\u043d\u043e, \u0432\u044b \u0441\u043b\u0443\u0447\u0430\u0439\u043d\u043e \u0441\u043e\u0437\u0434\u0430\u043b\u0438 Product Ops-\u0440\u043e\u043b\u044c \u0432\u043d\u0443\u0442\u0440\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u044b \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u043e\u0432',
+      body:'\u0421\u0438\u0441\u0442\u0435\u043c\u044b, \u043a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f, \u0434\u0430\u043d\u043d\u044b\u0435 \u0438 \u0440\u0435\u0441\u0443\u0440\u0441 \u043a\u043e\u043c\u0430\u043d\u0434\u044b \u043d\u0430\u043f\u0440\u044f\u0436\u0435\u043d\u044b \u043e\u0434\u043d\u043e\u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e. \u042d\u0442\u043e \u043d\u0435 \u0440\u0435\u0448\u0430\u0435\u0442\u0441\u044f \u0435\u0449\u0451 \u043e\u0434\u043d\u0438\u043c \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u043e\u043c \u2014 \u043d\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u043e\u043d\u043d\u043e\u0433\u043e \u0441\u043b\u043e\u044f.'}
+  },
+  take:{
+    systems:['\u041f\u0440\u0435\u0432\u0440\u0430\u0442\u0438\u0442\u044c \u043f\u043e\u0432\u0442\u043e\u0440\u044f\u044e\u0449\u0438\u0435\u0441\u044f \u0438\u0441\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u0432 \u043e\u0434\u0438\u043d \u0437\u0430\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u044b\u0439 \u043f\u0440\u043e\u0446\u0435\u0441\u0441 \u0441 \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0435\u043c','\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c, \u0447\u0442\u043e \u0437\u043d\u0430\u0447\u0438\u0442 \u00ab\u0433\u043e\u0442\u043e\u0432\u043e\u00bb \u0438 \u00ab\u0447\u044c\u044f \u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0441\u0442\u044c\u00bb \u0434\u043b\u044f \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u043e\u0432, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u0432\u044b\u0437\u044b\u0432\u0430\u044e\u0442 \u0431\u043e\u043b\u044c\u0448\u0435 \u0432\u0441\u0435\u0433\u043e \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432'],
+    communication:['\u0417\u0430\u0444\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0430\u0443\u0434\u0438\u0442\u043e\u0440\u0438\u044e, \u043a\u0430\u043d\u0430\u043b \u0438 \u043f\u0435\u0440\u0438\u043e\u0434\u0438\u0447\u043d\u043e\u0441\u0442\u044c \u0434\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439','\u0412\u044b\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u043a\u0440\u043e\u0441\u0441-\u0444\u0443\u043d\u043a\u0446\u0438\u043e\u043d\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u0435\u0440\u0435\u0434\u0430\u0447\u0438, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0434\u0430\u043a\u0442 \u043d\u0435 \u0431\u044b\u043b \u043f\u043e\u0447\u0442\u0430\u043b\u044c\u043e\u043d\u043e\u043c'],
+    data:['\u0421\u0434\u0435\u043b\u0430\u0442\u044c \u043e\u0434\u0438\u043d \u0432\u0445\u043e\u0434 \u0434\u043b\u044f \u043e\u0431\u0440\u0430\u0442\u043d\u043e\u0439 \u0441\u0432\u044f\u0437\u0438 \u0432\u043c\u0435\u0441\u0442\u043e \u043a\u0443\u0447\u0438 \u0440\u0430\u0437\u0440\u043e\u0437\u043d\u0435\u043d\u043d\u044b\u0445','\u0410\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c, \u043a\u043e\u0442\u043e\u0440\u0443\u044e \u0441\u0435\u0439\u0447\u0430\u0441 \u043f\u0440\u043e\u0434\u0430\u043a\u0442 \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u0442 \u0432\u0440\u0443\u0447\u043d\u0443\u044e'],
+    capacity:['\u041f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e \u0441\u043d\u044f\u0442\u044c \u0440\u0443\u0447\u043d\u0443\u044e \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c \u0441 \u043f\u0440\u043e\u0434\u0430\u043a\u0442\u0430','\u0414\u0430\u0432\u0430\u0442\u044c \u0433\u043e\u0442\u043e\u0432\u0443\u044e \u0435\u0436\u0435\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0443\u044e \u0441\u0432\u043e\u0434\u043a\u0443 \u0432\u043c\u0435\u0441\u0442\u043e \u0441\u044b\u0440\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445'],
+    default:['\u041f\u043e\u043d\u044f\u0442\u044c, \u043e\u0442\u043a\u0443\u0434\u0430 \u0431\u0435\u0440\u0451\u0442\u0441\u044f \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u043e\u043d\u043d\u043e\u0435 \u0442\u0440\u0435\u043d\u0438\u0435','\u0423\u0431\u0440\u0430\u0442\u044c \u043b\u0438\u0448\u043d\u0438\u0435 \u0448\u0430\u0433\u0438, \u0432\u0441\u0442\u0440\u0435\u0447\u0438 \u0438 \u0440\u0443\u0447\u043d\u0443\u044e \u0440\u0430\u0431\u043e\u0442\u0443, \u0433\u0434\u0435 \u043e\u043d\u0430 \u043d\u0435 \u043d\u0443\u0436\u043d\u0430','\u0417\u0430\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u043e\u0441\u0442\u0430\u0432\u0448\u0435\u0435\u0441\u044f \u0432 \u043f\u043e\u0432\u0442\u043e\u0440\u044f\u0435\u043c\u044b\u0435 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u044b \u0441 \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0435\u043c','\u0410\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043f\u043e\u0432\u0442\u043e\u0440\u044f\u044e\u0449\u0443\u044e\u0441\u044f \u043e\u0442\u0447\u0451\u0442\u043d\u043e\u0441\u0442\u044c \u0438 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0446\u0438\u044e']
+  }
+}
+};
+
+let lang = 'en';
+let current = 0;
+const answers = [];
+let lastZoneResult = null;
+
+function t(){ return I18N[lang]; }
+
+function setLang(l){
+  lang = l;
+  document.getElementById('btnEn').classList.toggle('active', l==='en');
+  document.getElementById('btnRu').classList.toggle('active', l==='ru');
+  document.documentElement.lang = l;
+  renderIntro();
+  if(document.getElementById('screen-quiz').classList.contains('active')) renderQuestion();
+  if(document.getElementById('screen-results').classList.contains('active')) renderResults(lastZoneResult);
+}
+
+function renderIntro(){
+  const d = t();
+  document.getElementById('brandMark').textContent = d.brandMark;
+  document.getElementById('heroTitle').textContent = d.heroTitle;
+  document.getElementById('heroLede').textContent = d.heroLede;
+  document.getElementById('startBtn').textContent = d.startBtn;
+  document.getElementById('metaQ').textContent = d.metaQ;
+  document.getElementById('metaMin').textContent = d.metaMin;
+  document.getElementById('metaZones').textContent = d.metaZones;
+  const zc = document.getElementById('zoneChips');
+  zc.innerHTML = '';
+  d.zoneChips.forEach(z=>{
+    const el = document.createElement('div');
+    el.className = 'zone-chip';
+    el.textContent = z;
+    zc.appendChild(el);
+  });
+}
+
+function startQuiz(){
+  show('screen-quiz');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const d = t();
+  const q = QUESTIONS[current];
+  const qd = d.questions[current];
+  document.getElementById('qCount').textContent = d.qOf(current+1, QUESTIONS.length);
+  document.getElementById('qZone').textContent = d.zoneNames[q.zone];
+  document.getElementById('qText').textContent = qd.text;
+  document.getElementById('railFill').style.width = `${(current/QUESTIONS.length)*100}%`;
+  const optsEl = document.getElementById('qOpts');
+  optsEl.innerHTML = '';
+  const keys = ['A','B','C','D'];
+  qd.opts.forEach((txt,i)=>{
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<span class="k">${keys[i]}</span><span>${txt}</span>`;
+    b.onclick = ()=>selectOption(q.opts[i]);
+    optsEl.appendChild(b);
+  });
+}
+
+function selectOption(score){
+  answers.push({zone:QUESTIONS[current].zone, score});
+  current++;
+  if(current < QUESTIONS.length){
+    document.getElementById('screen-quiz').classList.remove('active');
+    void document.getElementById('screen-quiz').offsetWidth;
+    document.getElementById('screen-quiz').classList.add('active');
+    renderQuestion();
+  } else {
+    document.getElementById('railFill').style.width = '100%';
+    lastZoneResult = computeResult();
+    renderResults(lastZoneResult);
+    show('screen-results');
+  }
+}
+
+function computeResult(){
+  const totals = {}, counts = {};
+  answers.forEach(a=>{
+    totals[a.zone] = (totals[a.zone]||0) + a.score;
+    counts[a.zone] = (counts[a.zone]||0) + 1;
+  });
+  const pct = {};
+  ZONE_KEYS.forEach(z=>{ pct[z] = counts[z] ? Math.round((totals[z]/(counts[z]*3))*100) : 0; });
+  const overall = Math.round(ZONE_KEYS.reduce((s,z)=>s+pct[z],0)/ZONE_KEYS.length);
+  let lowestZone = ZONE_KEYS[0];
+  ZONE_KEYS.forEach(z=>{ if(pct[z] < pct[lowestZone]) lowestZone = z; });
+  const lowCount = ZONE_KEYS.filter(z=>pct[z] < 40).length;
+  let copyKey;
+  if(overall >= 75) copyKey = 'ok';
+  else if(lowCount >= 3) copyKey = 'all';
+  else copyKey = lowestZone;
+  return {pct, overall, copyKey};
+}
+
+function renderResults(r){
+  if(!r) return;
+  const d = t();
+  document.getElementById('resHeadline').textContent = d.resHeadline;
+  const copy = d.results[r.copyKey];
+  document.getElementById('resTitle').textContent = copy.title;
+  document.getElementById('resBody').textContent = d.resBodyTpl(r.overall);
+
+  const metersEl = document.getElementById('meters');
+  metersEl.innerHTML = '';
+  ZONE_KEYS.forEach(z=>{
+    const p = r.pct[z];
+    const row = document.createElement('div');
+    row.className = 'meter-row';
+    row.innerHTML = `<div class="meter-label">${d.zoneNames[z]}</div>
+      <div class="meter-track"><div class="meter-fill" style="background:${ZONE_COLOR[z]}"></div></div>
+      <div class="meter-pct font-m">${p}%</div>`;
+    metersEl.appendChild(row);
+    requestAnimationFrame(()=>{ row.querySelector('.meter-fill').style.width = p+'%'; });
+  });
+
+  const panel = document.getElementById('frictionPanel');
+  panel.classList.toggle('ok', r.copyKey==='ok');
+  document.getElementById('frictionLabel').textContent = copy.label;
+  document.getElementById('frictionTitle').textContent = copy.title;
+  document.getElementById('frictionBody').textContent = copy.body;
+
+  const takeSection = document.getElementById('takeSection');
+  document.getElementById('takeHeadline').textContent = d.takeHeadline;
+  const list = document.getElementById('takeList');
+  list.innerHTML = '';
+  const ctaPanel = document.getElementById('ctaPanel');
+  if(r.copyKey === 'ok'){
+    takeSection.style.display = 'none';
+    ctaPanel.style.display = 'none';
+  } else {
+    takeSection.style.display = 'block';
+    ctaPanel.style.display = 'block';
+    const items = d.take[r.copyKey] || d.take.default;
+    items.forEach((it,i)=>{
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="tk">0${i+1}</span><span>${it}</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('ctaTitle').textContent = d.ctaTitle;
+  document.getElementById('ctaBody').textContent = d.ctaBody;
+  document.getElementById('ctaConnect').textContent = d.ctaConnect;
+  document.getElementById('ctaRestart').textContent = d.ctaRestart;
+}
+
+function restart(){
+  current = 0;
+  answers.length = 0;
+  lastZoneResult = null;
+  document.getElementById('railFill').style.width = '0%';
+  show('screen-intro');
+}
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+renderIntro();
+</script>
+</body>
+</html>
